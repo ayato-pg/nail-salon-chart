@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オフライン - ネイルサロン電子カルテ</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .offline-container {
+            text-align: center;
+            max-width: 400px;
+            padding: 40px 20px;
+        }
+        
+        .offline-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .retry-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .retry-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .offline-features {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .offline-features h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .offline-features ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .offline-features li {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 480px) {
+            .offline-container {
+                padding: 20px;
+            }
+            
+            .offline-icon {
+                font-size: 60px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            p {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱💔</div>
+        <h1>オフラインモード</h1>
+        <p>
+            インターネット接続が確認できません。<br>
+            保存済みのデータは引き続きご利用いただけます。
+        </p>
+        
+        <button class="retry-btn" onclick="retry()">
+            🔄 再接続を試す
+        </button>
+        
+        <div class="offline-features">
+            <h3>オフラインで利用可能な機能</h3>
+            <ul>
+                <li>✅ 顧客一覧の表示・検索</li>
+                <li>✅ 新規顧客登録</li>
+                <li>✅ 施術記録の追加・閲覧</li>
+                <li>✅ 写真の撮影・保存</li>
+                <li>✅ 分析データの表示</li>
+                <li>⚠️ データのエクスポート（制限あり）</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // 接続状況を監視
+        window.addEventListener('online', function() {
+            showConnectionRestored();
+        });
+        
+        window.addEventListener('offline', function() {
+            console.log('オフラインになりました');
+        });
+        
+        function retry() {
+            if (navigator.onLine) {
+                // オンラインの場合はアプリに戻る
+                window.location.href = './app.html';
+            } else {
+                // オフラインの場合は保存済みページを開く
+                if ('serviceWorker' in navigator) {
+                    caches.match('./app.html').then(function(response) {
+                        if (response) {
+                            window.location.href = './app.html';
+                        } else {
+                            alert('保存されたデータがありません。インターネット接続を確認してください。');
+                        }
+                    });
+                }
+            }
+        }
+        
+        function showConnectionRestored() {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #28a745;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-size: 14px;
+                animation: slideDown 0.3s ease-out;
+            `;
+            notification.innerHTML = '🌐 インターネット接続が復旧しました！';
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.3s ease-in';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                    window.location.href = './app.html';
+                }, 300);
+            }, 2000);
+        }
+        
+        // ページ読み込み時に接続状況をチェック
+        document.addEventListener('DOMContentLoaded', function() {
+            if (navigator.onLine) {
+                setTimeout(() => {
+                    window.location.href = './app.html';
+                }, 1000);
+            }
+        });
+    </script>
+    
+    <style>
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+</html>

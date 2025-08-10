@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ネイルサロン電子カルテ</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="ネイルサロン専用の顧客管理・施術記録アプリケーション">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ネイルカルテ">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-192x192.png">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <style>
+        /* リセット & 基本スタイル */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            height: 100%;
+            overflow-x: hidden;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+        
+        /* スマホ最適化ヘッダー */
+        .app-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: max(env(safe-area-inset-top), 20px) 20px 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 100;
+        }
+        
+        .app-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .app-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
+        /* メインコンテンツ */
+        .app-main {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 20px 20px 80px;
+            overflow-y: auto;
+            display: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .page.active {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* ページヘッダー */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .page-counter {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* カード系コンポーネント */
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .card:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+        }
+        
+        .customer-card {
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .customer-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .customer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .customer-info-item {
+            font-size: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .visit-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: auto;
+        }
+        
+        /* 検索・フィルター */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            background: white;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-select {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        /* ボタン */
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        
+        /* フローティングアクションボタン */
+        .fab {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 24px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .fab:active {
+            transform: scale(0.9);
+        }
+        
+        .fab.hidden {
+            transform: scale(0);
+        }
+        
+        /* ボトムナビゲーション */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            padding: max(env(safe-area-inset-bottom), 8px) 0 max(env(safe-area-inset-bottom), 8px);
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: #666;
+            min-height: 60px;
+            justify-content: center;
+        }
+        
+        .nav-item.active {
+            color: #667eea;
+        }
+        
+        .nav-item:active {
+            transform: scale(0.95);
+            background: #f0f0f0;
+            border-radius: 12px;
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        /* フォーム */
+        .form-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        
+        .form-section-title {
+            font-size: 18px;
+            color: #667eea;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .required {
+            color: #ff6b6b;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            background: #fafafa;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        
+        .form-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        /* モーダル */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: flex-end;
+            opacity: 1;
+        }
+        
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-height: 80vh;
+            border-radius: 20px 20px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+            overflow: hidden;
+        }
+        
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* カメラ関連 */
+        .camera-container {
+            position: relative;
+            background: #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+        
+        .camera-video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .camera-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .camera-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            color: #333;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .photo-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        
+        .photo-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-delete {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        
+        /* インストール促進バナー */
+        .install-banner {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 16px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1500;
+            animation: slideDown 0.5s;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+        
+        .install-banner.show {
+            display: flex;
+        }
+        
+        .install-icon {
+            font-size: 24px;
+        }
+        
+        .install-text {
+            flex: 1;
+        }
+        
+        .install-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .install-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .install-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .install-close {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        /* トースト通知 */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 25px;
+            font-size: 14px;
+            text-align: center;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 3000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        /* プルトゥリフレッシュ */
+        .pull-refresh {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        
+        .pull-refresh.show {
+            opacity: 1;
+            top: 20px;
+        }
+        
+        /* ローディング */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #e0e0e0;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* エンプティステート */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .empty-title {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .empty-description {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            .search-container {
+                flex-direction: column;
+            }
+            
+            .search-input {
+                min-width: auto;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .form-actions .btn {
+                flex: none;
+            }
+        }
+        
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #1a1a1a;
+                color: #ffffff;
+            }
+            
+            .card {
+                background: #2d2d2d;
+                border-color: #404040;
+            }
+            
+            .form-input {
+                background: #2d2d2d;
+                color: white;
+                border-color: #404040;
+            }
+            
+            .bottom-nav {
+                background: #2d2d2d;
+                border-color: #404040;
+            }
+        }
+        
+        /* セーフエリア対応 */
+        @supports (padding: max(0px)) {
+            .app-header {
+                padding-top: max(env(safe-area-inset-top), 20px);
+            }
+            
+            .bottom-nav {
+                padding-bottom: max(env(safe-area-inset-bottom), 8px);
+            }
+            
+            .page {
+                padding-bottom: calc(80px + max(env(safe-area-inset-bottom), 0px));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- インストール促進バナー -->
+    <div class="install-banner" id="install-banner">
+        <div class="install-icon">📱</div>
+        <div class="install-text">
+            <div class="install-title">アプリをインストール</div>
+            <div class="install-subtitle">ホーム画面から素早くアクセス</div>
+        </div>
+        <button class="install-btn" id="install-btn">インストール</button>
+        <button class="install-close" id="install-close">&times;</button>
+    </div>
+
+    <!-- ヘッダー -->
+    <header class="app-header">
+        <h1 class="app-title">ネイルサロン電子カルテ</h1>
+        <div class="app-subtitle">PWA版 - オフライン対応</div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="app-main">
+        <!-- 顧客一覧ページ -->
+        <div class="page active" id="customers-page">
+            <div class="pull-refresh" id="pull-refresh">🔄</div>
+            <div class="page-header">
+                <h2 class="page-title">顧客一覧</h2>
+                <div class="page-counter" id="customer-counter">0人</div>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" id="customer-search" placeholder="🔍 名前・電話番号で検索">
+                <select class="filter-select" id="sort-customers">
+                    <option value="lastVisit">最終来店日順</option>
+                    <option value="name">名前順</option>
+                    <option value="visits">来店回数順</option>
+                </select>
+            </div>
+            
+            <div id="customer-list">
+                <!-- 顧客リストがここに生成される -->
+            </div>
+            
+            <div class="empty-state" id="customers-empty" style="display: none;">
+                <div class="empty-icon">👤</div>
+                <h3 class="empty-title">まだ顧客が登録されていません</h3>
+                <p class="empty-description">右下の＋ボタンから新しい顧客を登録してください</p>
+            </div>
+        </div>
+
+        <!-- 新規顧客登録ページ -->
+        <div class="page" id="new-customer-page">
+            <div class="page-header">
+                <h2 class="page-title">新規顧客登録</h2>
+            </div>
+            
+            <form id="new-customer-form">
+                <div class="form-section">
+                    <h3 class="form-section-title">📋 基本情報</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-name">氏名 <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="customer-name" required autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-kana">ふりがな</label>
+                        <input type="text" class="form-input" id="customer-kana">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-phone">電話番号 <span class="required">*</span></label>
+                        <input type="tel" class="form-input" id="customer-phone" required autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-email">メールアドレス</label>
+                        <input type="email" class="form-input" id="customer-email" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-birthday">生年月日</label>
+                        <input type="date" class="form-input" id="customer-birthday">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-address">住所</label>
+                        <textarea class="form-input form-textarea" id="customer-address" rows="2" autocomplete="address-line1"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="form-section-title">🏥 健康情報</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-allergies">アレルギー・注意事項</label>
+                        <textarea class="form-input form-textarea" id="customer-allergies" rows="3" placeholder="例：金属アレルギー、皮膚疾患、妊娠中など"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="customer-notes">メモ</label>
+                        <textarea class="form-input form-textarea" id="customer-notes" rows="3" placeholder="自由記入"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">✅ 登録</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">🔄 クリア</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 施術記録ページ -->
+        <div class="page" id="treatments-page">
+            <div class="page-header">
+                <h2 class="page-title">施術記録</h2>
+                <div class="page-counter" id="treatment-counter">0件</div>
+            </div>
+            
+            <div id="treatment-list">
+                <!-- 施術記録リストがここに生成される -->
+            </div>
+            
+            <div class="empty-state" id="treatments-empty" style="display: none;">
+                <div class="empty-icon">💅</div>
+                <h3 class="empty-title">まだ施術記録がありません</h3>
+                <p class="empty-description">右下の＋ボタンから新しい施術記録を追加してください</p>
+            </div>
+        </div>
+
+        <!-- デザインギャラリーページ -->
+        <div class="page" id="gallery-page">
+            <div class="page-header">
+                <h2 class="page-title">デザインギャラリー</h2>
+                <div class="page-counter" id="gallery-counter">0枚</div>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" id="design-search" placeholder="🏷️ タグで検索">
+                <select class="filter-select" id="season-filter">
+                    <option value="">全シーズン</option>
+                    <option value="spring">🌸 春</option>
+                    <option value="summer">🌻 夏</option>
+                    <option value="autumn">🍂 秋</option>
+                    <option value="winter">❄️ 冬</option>
+                </select>
+            </div>
+            
+            <div id="gallery-grid">
+                <!-- ギャラリーがここに生成される -->
+            </div>
+            
+            <div class="empty-state" id="gallery-empty" style="display: none;">
+                <div class="empty-icon">🎨</div>
+                <h3 class="empty-title">まだデザイン画像がありません</h3>
+                <p class="empty-description">施術記録で写真を追加すると、こちらに表示されます</p>
+            </div>
+        </div>
+
+        <!-- 分析ページ -->
+        <div class="page" id="analytics-page">
+            <div class="page-header">
+                <h2 class="page-title">分析・統計</h2>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section-title">📅 期間選択</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="month" class="form-input" id="analytics-month" style="flex: 1;">
+                    <button class="btn btn-primary" onclick="updateAnalytics()">更新</button>
+                </div>
+            </div>
+            
+            <div id="analytics-dashboard">
+                <!-- 分析データがここに生成される -->
+            </div>
+        </div>
+
+        <!-- バックアップページ -->
+        <div class="page" id="backup-page">
+            <div class="page-header">
+                <h2 class="page-title">🔄 バックアップ管理</h2>
+            </div>
+            
+            <div id="backup-content">
+                <!-- バックアップ管理UIがここに生成される -->
+            </div>
+        </div>
+    </main>
+
+    <!-- フローティングアクションボタン -->
+    <button class="fab" id="fab-btn">+</button>
+
+    <!-- ボトムナビゲーション -->
+    <nav class="bottom-nav">
+        <a class="nav-item active" data-page="customers">
+            <div class="nav-icon">👥</div>
+            <div class="nav-label">顧客</div>
+        </a>
+        <a class="nav-item" data-page="new-customer">
+            <div class="nav-icon">➕</div>
+            <div class="nav-label">新規</div>
+        </a>
+        <a class="nav-item" data-page="treatments">
+            <div class="nav-icon">💅</div>
+            <div class="nav-label">施術</div>
+        </a>
+        <a class="nav-item" data-page="gallery">
+            <div class="nav-icon">🎨</div>
+            <div class="nav-label">ギャラリー</div>
+        </a>
+        <a class="nav-item" data-page="analytics">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">分析</div>
+        </a>
+        <a class="nav-item" data-page="backup">
+            <div class="nav-icon">💾</div>
+            <div class="nav-label">バックアップ</div>
+        </a>
+    </nav>
+
+    <!-- 施術記録モーダル -->
+    <div class="modal" id="treatment-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 施術記録登録</h3>
+                <button class="modal-close" onclick="closeModal('treatment-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="treatment-form">
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-customer">顧客選択 <span class="required">*</span></label>
+                        <select class="form-input" id="treatment-customer" required>
+                            <option value="">選択してください</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-date">施術日 <span class="required">*</span></label>
+                        <input type="date" class="form-input" id="treatment-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-menu">施術メニュー <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="treatment-menu" required placeholder="例：ジェルネイル、オフ込み">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-price">料金 <span class="required">*</span></label>
+                        <input type="number" class="form-input" id="treatment-price" min="0" required placeholder="例：8000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-staff">担当者</label>
+                        <input type="text" class="form-input" id="treatment-staff" placeholder="担当スタッフ名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">📷 デザイン写真</label>
+                        <button type="button" class="btn btn-outline" onclick="openCamera()">📷 カメラで撮影</button>
+                        <input type="file" id="treatment-photos" multiple accept="image/*" style="display: none;">
+                        <div class="photo-preview" id="photo-preview"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="treatment-tags">タグ</label>
+                        <input type="text" class="form-input" id="treatment-tags" placeholder="春,ピンク,フレンチ（カンマ区切り）">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">✅ 登録</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('treatment-modal')">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- カメラモーダル -->
+    <div class="modal" id="camera-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">📷 カメラ</h3>
+                <button class="modal-close" onclick="closeCamera()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video class="camera-video" id="camera-video" autoplay playsinline></video>
+                    <div class="camera-controls">
+                        <button type="button" class="camera-btn" onclick="switchCamera()">🔄</button>
+                        <button type="button" class="camera-btn" onclick="takePhoto()" style="background: #667eea; color: white;">📷</button>
+                        <button type="button" class="camera-btn" onclick="closeCamera()">❌</button>
+                    </div>
+                </div>
+                <canvas id="camera-canvas" style="display: none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 既存のscript.jsを読み込み -->
+    <script src="script.js"></script>
+    
+    <script>
+        // PWA関連の変数
+        let deferredPrompt;
+        let currentStream;
+        let currentPage = 'customers';
+        let touchStartY = 0;
+        let pullToRefreshTriggered = false;
+        
+        // Service Worker登録
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then((registration) => {
+                    console.log('✅ Service Worker registered:', registration);
+                    
+                    // アップデート確認
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showToast('🔄 新しいバージョンが利用可能です。再読み込みしてください。');
+                            }
+                        });
+                    });
+                })
+                .catch((error) => {
+                    console.error('❌ Service Worker registration failed:', error);
+                });
+        }
+        
+        // PWAインストール促進
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            const banner = document.getElementById('install-banner');
+            banner.classList.add('show');
+            
+            // 3日後まで表示しない設定
+            const lastDismissed = localStorage.getItem('install-banner-dismissed');
+            if (lastDismissed) {
+                const daysSince = (Date.now() - parseInt(lastDismissed)) / (1000 * 60 * 60 * 24);
+                if (daysSince < 3) {
+                    banner.classList.remove('show');
+                }
+            }
+        });
+        
+        // インストールボタン
+        document.getElementById('install-btn').addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                showToast('📱 アプリをインストール中...');
+            }
+            
+            deferredPrompt = null;
+            document.getElementById('install-banner').classList.remove('show');
+        });
+        
+        // インストールバナー閉じる
+        document.getElementById('install-close').addEventListener('click', () => {
+            document.getElementById('install-banner').classList.remove('show');
+            localStorage.setItem('install-banner-dismissed', Date.now().toString());
+        });
+        
+        // アプリがインストールされた時
+        window.addEventListener('appinstalled', () => {
+            showToast('✅ アプリがインストールされました！');
+            document.getElementById('install-banner').classList.remove('show');
+        });
+        
+        // ページ切り替え
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = item.dataset.page;
+                switchPage(page);
+            });
+        });
+        
+        function switchPage(pageName) {
+            // ナビゲーション更新
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === pageName) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // ページ切り替え
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(`${pageName}-page`).classList.add('active');
+            
+            currentPage = pageName;
+            
+            // FABボタンの表示制御
+            const fab = document.getElementById('fab-btn');
+            if (pageName === 'customers') {
+                fab.style.display = 'flex';
+                fab.onclick = () => switchPage('new-customer');
+            } else if (pageName === 'treatments') {
+                fab.style.display = 'flex';
+                fab.onclick = openNewTreatment;
+            } else {
+                fab.style.display = 'none';
+            }
+            
+            // ページ固有の初期化
+            if (pageName === 'analytics') {
+                updateAnalytics();
+            } else if (pageName === 'gallery') {
+                renderGallery();
+            } else if (pageName === 'treatments') {
+                renderTreatmentList();
+            } else if (pageName === 'backup') {
+                renderBackupPage();
+            }
+        }
+        
+        // プルトゥリフレッシュ
+        document.addEventListener('touchstart', (e) => {
+            if (currentPage === 'customers' && window.scrollY === 0) {
+                touchStartY = e.touches[0].clientY;
+            }
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (currentPage === 'customers' && window.scrollY === 0) {
+                const touchCurrentY = e.touches[0].clientY;
+                const diff = touchCurrentY - touchStartY;
+                
+                if (diff > 100 && !pullToRefreshTriggered) {
+                    pullToRefreshTriggered = true;
+                    const pullRefresh = document.getElementById('pull-refresh');
+                    pullRefresh.classList.add('show');
+                    
+                    // バイブレーション
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('touchend', () => {
+            if (pullToRefreshTriggered) {
+                pullToRefreshTriggered = false;
+                const pullRefresh = document.getElementById('pull-refresh');
+                pullRefresh.classList.remove('show');
+                
+                // リフレッシュ処理
+                setTimeout(() => {
+                    renderCustomerList();
+                    showToast('🔄 データを更新しました');
+                }, 300);
+            }
+        });
+        
+        // カメラ機能
+        async function openCamera() {
+            const modal = document.getElementById('camera-modal');
+            const video = document.getElementById('camera-video');
+            
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                video.srcObject = currentStream;
+                modal.classList.add('active');
+                
+                // フルスクリーン対応
+                if (screen.orientation && screen.orientation.lock) {
+                    try {
+                        await screen.orientation.lock('landscape');
+                    } catch (e) {
+                        console.log('Screen orientation lock not supported');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('カメラアクセスエラー:', error);
+                showToast('❌ カメラにアクセスできません');
+                
+                // ファイル選択にフォールバック
+                document.getElementById('treatment-photos').click();
+            }
+        }
+        
+        function closeCamera() {
+            const modal = document.getElementById('camera-modal');
+            modal.classList.remove('active');
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            
+            // 画面向き解除
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+        }
+        
+        async function switchCamera() {
+            if (currentStream) {
+                closeCamera();
+                
+                // 前面カメラに切り替え
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: 'user',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                    
+                    const video = document.getElementById('camera-video');
+                    video.srcObject = currentStream;
+                    document.getElementById('camera-modal').classList.add('active');
+                    
+                } catch (error) {
+                    showToast('❌ カメラ切り替えに失敗しました');
+                }
+            }
+        }
+        
+        function takePhoto() {
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('camera-canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            context.drawImage(video, 0, 0);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // 写真をプレビューに追加
+            addPhotoToPreview(imageData);
+            
+            // バイブレーション + 音
+            if (navigator.vibrate) {
+                navigator.vibrate(100);
+            }
+            
+            // シャッター音の代わりにビジュアルフィードバック
+            const video_element = document.getElementById('camera-video');
+            video_element.style.opacity = '0.3';
+            setTimeout(() => {
+                video_element.style.opacity = '1';
+            }, 100);
+            
+            showToast('📷 写真を撮影しました');
+            closeCamera();
+        }
+        
+        function addPhotoToPreview(imageData) {
+            const preview = document.getElementById('photo-preview');
+            
+            const photoItem = document.createElement('div');
+            photoItem.className = 'photo-item';
+            photoItem.innerHTML = `
+                <img src="${imageData}" alt="施術写真">
+                <button class="photo-delete" onclick="removePhoto(this)">×</button>
+            `;
+            
+            preview.appendChild(photoItem);
+        }
+        
+        function removePhoto(button) {
+            button.parentElement.remove();
+        }
+        
+        // ファイル選択からの写真追加
+        document.getElementById('treatment-photos').addEventListener('change', async function(e) {
+            const files = e.target.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const compressed = await compressImage(file);
+                addPhotoToPreview(compressed);
+            }
+        });
+        
+        // 画像圧縮
+        function compressImage(file, maxSize = 800, quality = 0.8) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // アスペクト比を保持してリサイズ
+                        let { width, height } = img;
+                        if (width > height) {
+                            if (width > maxSize) {
+                                height = Math.round(height * maxSize / width);
+                                width = maxSize;
+                            }
+                        } else {
+                            if (height > maxSize) {
+                                width = Math.round(width * maxSize / height);
+                                height = maxSize;
+                            }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // トースト表示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // モーダル制御
+        function openNewTreatment() {
+            updateCustomerSelect();
+            document.getElementById('treatment-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('treatment-modal').classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        // モーダルの背景タップで閉じる
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+        
+        // プッシュ通知許可
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        showToast('🔔 通知が有効になりました');
+                    }
+                });
+            }
+        }
+        
+        // オンライン/オフライン状態
+        window.addEventListener('online', () => {
+            showToast('🌐 オンラインに復帰しました');
+        });
+        
+        window.addEventListener('offline', () => {
+            showToast('📱 オフラインモードです');
+        });
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 既存の初期化
+            loadData();
+            setupEventListeners();
+            renderCustomerList();
+            updateAnalyticsMonth();
+            updateCounts();
+            
+            // PWA固有の初期化
+            requestNotificationPermission();
+            
+            // URLパラメータでページ切り替え
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = urlParams.get('page');
+            if (page) {
+                switchPage(page);
+            }
+            
+            showToast('📱 PWA版電子カルテが起動しました');
+        });
+        
+        // カウンター更新
+        function updateCounts() {
+            document.getElementById('customer-counter').textContent = `${customers.length}人`;
+            document.getElementById('treatment-counter').textContent = `${treatments.length}件`;
+            document.getElementById('gallery-counter').textContent = `${designImages.length}枚`;
+            
+            // エンプティステートの表示制御
+            document.getElementById('customers-empty').style.display = customers.length === 0 ? 'block' : 'none';
+            document.getElementById('treatments-empty').style.display = treatments.length === 0 ? 'block' : 'none';
+            document.getElementById('gallery-empty').style.display = designImages.length === 0 ? 'block' : 'none';
+        }
+        
+        // 顧客リスト描画（PWA版）
+        function renderCustomerList() {
+            const listContainer = document.getElementById('customer-list');
+            listContainer.innerHTML = '';
+            
+            customers.forEach(customer => {
+                const card = document.createElement('div');
+                card.className = 'card customer-card';
+                card.onclick = () => showCustomerDetail(customer.id);
+                
+                const lastVisit = getLastVisit(customer.id);
+                const visitCount = getVisitCount(customer.id);
+                
+                card.innerHTML = `
+                    <div class="customer-name">${customer.name}</div>
+                    <div class="customer-info">
+                        <div class="customer-info-item">
+                            <span>📱</span>
+                            <span>${customer.phone}</span>
+                            <span class="visit-badge">${visitCount}回</span>
+                        </div>
+                        <div class="customer-info-item">
+                            <span>📅</span>
+                            <span>最終来店: ${lastVisit ? formatDate(lastVisit) : 'なし'}</span>
+                        </div>
+                        ${customer.allergies ? `
+                        <div class="customer-info-item" style="color: #e74c3c;">
+                            <span>⚠️</span>
+                            <span>${customer.allergies}</span>
+                        </div>` : ''}
+                    </div>
+                `;
+                
+                listContainer.appendChild(card);
+            });
+            
+            updateCounts();
+        }
+        
+    </script>
+</body>
+</html>
