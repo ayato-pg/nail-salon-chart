@@ -233,17 +233,162 @@ saveData = function() {
     }
 };
 
+// スマホデバッグ用ログ表示機能
+let debugMode = false;
+let debugLogs = [];
+
+function toggleDebugMode() {
+    debugMode = !debugMode;
+    if (debugMode) {
+        showDebugPanel();
+        console.log('🐛 デバッグモード ON');
+    } else {
+        hideDebugPanel();
+        console.log('🐛 デバッグモード OFF');
+    }
+}
+
+function addDebugLog(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = { timestamp, message, type };
+    debugLogs.push(logEntry);
+    
+    // 最新100件のみ保持
+    if (debugLogs.length > 100) {
+        debugLogs.shift();
+    }
+    
+    if (debugMode) {
+        updateDebugPanel();
+    }
+    
+    // コンソールにも出力
+    console.log(`[${timestamp}] ${message}`);
+}
+
+function showDebugPanel() {
+    let debugPanel = document.getElementById('debug-panel');
+    if (!debugPanel) {
+        debugPanel = document.createElement('div');
+        debugPanel.id = 'debug-panel';
+        debugPanel.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-size: 10px;
+            font-family: monospace;
+            z-index: 10000;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        `;
+        
+        const header = document.createElement('div');
+        header.innerHTML = `
+            <strong>🐛 デバッグログ</strong>
+            <button onclick="clearDebugLogs()" style="float: right; font-size: 10px;">クリア</button>
+            <button onclick="toggleDebugMode()" style="float: right; margin-right: 5px; font-size: 10px;">閉じる</button>
+            <hr style="margin: 5px 0;">
+        `;
+        debugPanel.appendChild(header);
+        
+        const logContainer = document.createElement('div');
+        logContainer.id = 'debug-logs';
+        debugPanel.appendChild(logContainer);
+        
+        document.body.appendChild(debugPanel);
+    }
+    debugPanel.style.display = 'block';
+    updateDebugPanel();
+}
+
+function hideDebugPanel() {
+    const debugPanel = document.getElementById('debug-panel');
+    if (debugPanel) {
+        debugPanel.style.display = 'none';
+    }
+}
+
+function updateDebugPanel() {
+    const logContainer = document.getElementById('debug-logs');
+    if (logContainer) {
+        logContainer.innerHTML = debugLogs.slice(-20).map(log => {
+            const color = log.type === 'error' ? '#ff4444' : 
+                         log.type === 'success' ? '#44ff44' : '#00ff00';
+            return `<div style="color: ${color}; margin: 2px 0;">[${log.timestamp}] ${log.message}</div>`;
+        }).join('');
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+}
+
+function clearDebugLogs() {
+    debugLogs = [];
+    updateDebugPanel();
+}
+
+// LocalStorage情報取得
+function getStorageInfo() {
+    const info = {
+        customers: customers.length,
+        treatments: treatments.length,
+        designs: designImages.length,
+        storageUsed: 0,
+        storageLimit: 0
+    };
+    
+    try {
+        // 使用容量概算
+        const customersSize = JSON.stringify(customers).length;
+        const treatmentsSize = JSON.stringify(treatments).length;
+        const designsSize = JSON.stringify(designImages).length;
+        info.storageUsed = Math.round((customersSize + treatmentsSize + designsSize) / 1024);
+        
+        // ブラウザの制限を推定（一般的に5-10MB）
+        info.storageLimit = 5120; // 5MB in KB
+    } catch (error) {
+        console.error('ストレージ情報取得エラー:', error);
+    }
+    
+    return info;
+}
+
 // 初期化
 document.addEventListener('DOMContentLoaded', function() {
+    addDebugLog('🚀 アプリケーション初期化開始');
+    
     loadData();
+    addDebugLog('📂 データロード完了');
+    
     setupEventListeners();
+    addDebugLog('🎧 イベントリスナー設定完了');
+    
     renderCustomerList();
+    addDebugLog('👥 顧客リスト描画完了');
+    
     updateAnalyticsMonth();
+    addDebugLog('📊 分析データ更新完了');
+    
+    // ストレージ情報をログ出力
+    const storageInfo = getStorageInfo();
+    addDebugLog(`💽 ストレージ: 顧客${storageInfo.customers}人, 施術${storageInfo.treatments}件, 使用量${storageInfo.storageUsed}KB`);
     
     // バックアップシステム初期化
     setTimeout(() => {
         BackupSystem.init();
+        addDebugLog('🔄 バックアップシステム初期化完了');
+        
+        // デバッグモード自動起動（開発時）
+        if (window.location.search.includes('debug=1')) {
+            toggleDebugMode();
+        }
     }, 1000);
+    
+    addDebugLog('✅ 初期化完了', 'success');
 });
 
 // イベントリスナーの設定
@@ -321,6 +466,86 @@ function saveData() {
     localStorage.setItem('nail_designs', JSON.stringify(designImages));
 }
 
+// エラーハンドリング付きデータ保存
+function saveDataWithErrorHandling() {
+    try {
+        // LocalStorage容量チェック
+        const testKey = 'nail_storage_test';
+        const testData = JSON.stringify({ test: 'data' });
+        localStorage.setItem(testKey, testData);
+        localStorage.removeItem(testKey);
+        
+        // 実際のデータ保存
+        localStorage.setItem('nail_customers', JSON.stringify(customers));
+        localStorage.setItem('nail_treatments', JSON.stringify(treatments));
+        localStorage.setItem('nail_designs', JSON.stringify(designImages));
+        
+        addDebugLog(`💾 データ保存成功: 顧客${customers.length}人, 施術${treatments.length}件`, 'success');
+        return true;
+    } catch (error) {
+        addDebugLog(`❌ LocalStorage保存エラー: ${error.message}`, 'error');
+        
+        if (error.name === 'QuotaExceededError' || error.name === 'QUOTA_EXCEEDED_ERR') {
+            addDebugLog('💽 ストレージ容量不足', 'error');
+            alert('ストレージの容量が不足しています。古いデータの削除が必要です。');
+        } else {
+            addDebugLog(`🚫 ストレージアクセスエラー: ${error.message}`, 'error');
+            alert('データの保存に失敗しました: ' + error.message);
+        }
+        return false;
+    }
+}
+
+// FileReader を Promise でラップする関数
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+    });
+}
+
+// 施術データ保存の共通処理
+function saveTreatmentData(treatment) {
+    addDebugLog('💾 施術データ保存開始');
+    
+    try {
+        // treatments配列に追加
+        treatments.push(treatment);
+        addDebugLog(`📊 施術記録追加: 全${treatments.length}件`);
+        
+        // LocalStorage保存（エラーハンドリング付き）
+        const success = saveDataWithErrorHandling();
+        
+        if (success) {
+            addDebugLog('✅ データ保存成功', 'success');
+            
+            // UI更新
+            document.getElementById('treatment-form').reset();
+            document.getElementById('photo-preview').innerHTML = '';
+            
+            closeModal('treatment-modal');
+            renderTreatmentList();
+            showNotification('施術記録を登録しました');
+            
+            // 手動バックアップ作成
+            if (typeof BackupSystem !== 'undefined') {
+                BackupSystem.createBackup('施術記録登録');
+            }
+            
+            // カウント更新
+            updateCounts();
+        } else {
+            addDebugLog('❌ データ保存失敗', 'error');
+            alert('データの保存に失敗しました。ストレージの容量を確認してください。');
+        }
+    } catch (error) {
+        addDebugLog(`❌ 施術記録保存エラー: ${error.message}`, 'error');
+        alert('施術記録の保存中にエラーが発生しました: ' + error.message);
+    }
+}
+
 function loadData() {
     const savedCustomers = localStorage.getItem('nail_customers');
     const savedTreatments = localStorage.getItem('nail_treatments');
@@ -344,32 +569,68 @@ function loadData() {
 
 // 顧客管理機能
 function addNewCustomer() {
+    addDebugLog('👤 顧客登録開始');
+    
+    // 必須フィールドチェック
+    const name = document.getElementById('customer-name').value.trim();
+    
+    if (!name) {
+        alert('顧客名は必須項目です');
+        addDebugLog('❌ 顧客名が未入力', 'error');
+        return;
+    }
+    
     const customer = {
         id: Date.now().toString(),
-        name: document.getElementById('customer-name').value,
-        kana: document.getElementById('customer-kana').value,
-        phone: document.getElementById('customer-phone').value,
-        email: document.getElementById('customer-email').value,
-        birthday: document.getElementById('customer-birthday').value,
-        address: document.getElementById('customer-address').value,
-        allergies: document.getElementById('customer-allergies').value,
-        notes: document.getElementById('customer-notes').value,
+        name: name,
+        kana: document.getElementById('customer-kana')?.value.trim() || '',
+        phone: document.getElementById('customer-phone')?.value.trim() || '',
+        email: document.getElementById('customer-email')?.value.trim() || '',
+        birthday: document.getElementById('customer-birthday')?.value || '',
+        address: document.getElementById('customer-address')?.value.trim() || '',
+        allergies: document.getElementById('customer-allergies')?.value.trim() || '',
+        notes: document.getElementById('customer-notes')?.value.trim() || '',
         createdAt: new Date().toISOString(),
         visitCount: 0
     };
     
-    customers.push(customer);
-    saveData();
+    addDebugLog(`👤 顧客データ作成: ${customer.name}`);
     
-    // フォームクリア
-    document.getElementById('new-customer-form').reset();
-    
-    // 顧客一覧ページに遷移
-    switchPage('customers');
-    renderCustomerList();
-    
-    // 成功メッセージ
-    showNotification('顧客を登録しました');
+    try {
+        customers.push(customer);
+        addDebugLog(`📊 顧客追加: 全${customers.length}人`);
+        
+        const success = saveDataWithErrorHandling();
+        
+        if (success) {
+            addDebugLog('✅ 顧客データ保存成功', 'success');
+            
+            // フォームクリア
+            document.getElementById('new-customer-form').reset();
+            
+            // 顧客一覧ページに遷移
+            switchPage('customers');
+            renderCustomerList();
+            
+            // 成功メッセージ
+            showNotification('顧客を登録しました');
+            
+            // 手動バックアップ作成
+            if (typeof BackupSystem !== 'undefined') {
+                BackupSystem.createBackup('顧客登録');
+            }
+            
+            // カウント更新
+            updateCounts();
+        } else {
+            // 追加に失敗した場合はロールバック
+            customers.pop();
+            addDebugLog('❌ 顧客データ保存失敗、ロールバック', 'error');
+        }
+    } catch (error) {
+        addDebugLog(`❌ 顧客登録エラー: ${error.message}`, 'error');
+        alert('顧客登録中にエラーが発生しました: ' + error.message);
+    }
 }
 
 function renderCustomerList() {
@@ -498,59 +759,80 @@ function openNewTreatment() {
 }
 
 function addNewTreatment() {
+    addDebugLog('📝 施術記録登録開始');
+    
+    // 必須フィールドチェック
+    const customerId = document.getElementById('treatment-customer').value;
+    const date = document.getElementById('treatment-date').value;
+    const menu = document.getElementById('treatment-menu').value;
+    const price = document.getElementById('treatment-price').value;
+    
+    if (!customerId || !date || !menu || !price) {
+        alert('必須項目を入力してください');
+        addDebugLog('❌ 必須項目チェック失敗', 'error');
+        return;
+    }
+    
     const treatment = {
         id: Date.now().toString(),
-        customerId: document.getElementById('treatment-customer').value,
-        date: document.getElementById('treatment-date').value,
-        menu: document.getElementById('treatment-menu').value,
-        color: document.getElementById('treatment-color').value,
-        parts: document.getElementById('treatment-parts').value,
-        shape: document.getElementById('treatment-shape').value,
-        length: document.getElementById('treatment-length').value,
-        time: document.getElementById('treatment-time').value,
-        price: parseInt(document.getElementById('treatment-price').value),
-        staff: document.getElementById('treatment-staff').value,
+        customerId: customerId,
+        date: date,
+        menu: menu,
+        color: document.getElementById('treatment-color')?.value || '',
+        parts: document.getElementById('treatment-parts')?.value || '',
+        shape: document.getElementById('treatment-shape')?.value || '',
+        length: document.getElementById('treatment-length')?.value || '',
+        time: document.getElementById('treatment-time')?.value || '',
+        price: parseInt(price) || 0,
+        staff: document.getElementById('treatment-staff').value || '',
         tags: document.getElementById('treatment-tags').value.split(',').map(t => t.trim()).filter(t => t),
-        nextProposal: document.getElementById('treatment-next').value,
+        nextProposal: document.getElementById('treatment-next')?.value || '',
         photos: [],
         createdAt: new Date().toISOString()
     };
     
-    // 写真の処理（Base64として保存）
+    addDebugLog(`📋 施術データ作成: ${menu} (${price}円)`);
+    
+    // 写真の処理（非同期処理を await で制御）
     const photoFiles = document.getElementById('treatment-photos').files;
+    
     if (photoFiles.length > 0) {
-        Array.from(photoFiles).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                treatment.photos.push(e.target.result);
-                
-                // デザインギャラリーにも追加
-                designImages.push({
-                    id: Date.now().toString() + Math.random(),
-                    image: e.target.result,
-                    tags: treatment.tags,
-                    season: getSeason(treatment.tags),
-                    color: getColor(treatment.tags),
-                    date: treatment.date,
-                    customerId: treatment.customerId
-                });
-                
-                saveData();
-            };
-            reader.readAsDataURL(file);
-        });
+        addDebugLog(`📷 写真処理開始: ${photoFiles.length}枚`);
+        
+        const processPhotos = async () => {
+            for (let i = 0; i < photoFiles.length; i++) {
+                const file = photoFiles[i];
+                try {
+                    const imageData = await readFileAsDataURL(file);
+                    treatment.photos.push(imageData);
+                    
+                    // デザインギャラリーにも追加
+                    designImages.push({
+                        id: Date.now().toString() + Math.random() + i,
+                        image: imageData,
+                        tags: treatment.tags,
+                        season: getSeason(treatment.tags),
+                        color: getColor(treatment.tags),
+                        date: treatment.date,
+                        customerId: treatment.customerId
+                    });
+                    
+                    addDebugLog(`✅ 写真${i + 1}処理完了`, 'success');
+                } catch (error) {
+                    addDebugLog(`❌ 写真${i + 1}処理失敗: ${error.message}`, 'error');
+                }
+            }
+            
+            // 全ての写真処理完了後にデータ保存
+            saveTreatmentData(treatment);
+        };
+        
+        processPhotos();
+    } else {
+        // 写真がない場合は即座に保存
+        addDebugLog('📷 写真なし、即座に保存');
+        saveTreatmentData(treatment);
     }
-    
-    treatments.push(treatment);
-    saveData();
-    
-    // フォームクリア
-    document.getElementById('treatment-form').reset();
-    document.getElementById('photo-preview').innerHTML = '';
-    
-    closeModal('treatment-modal');
-    renderTreatmentList();
-    showNotification('施術記録を登録しました');
 }
 
 function renderTreatmentList() {
