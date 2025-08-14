@@ -405,32 +405,47 @@ function setupEventListeners() {
         });
     });
     
-    // 顧客登録フォーム
-    document.getElementById('new-customer-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        addNewCustomer();
-    });
+    // 顧客登録フォーム（要素が存在する場合のみ）
+    const customerForm = document.getElementById('new-customer-form');
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            addNewCustomer();
+        });
+    }
     
-    // 施術記録フォーム
-    document.getElementById('treatment-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        addNewTreatment();
-    });
+    // 施術記録フォーム（要素が存在する場合のみ）
+    const treatmentForm = document.getElementById('treatment-form');
+    if (treatmentForm) {
+        treatmentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            addNewTreatment();
+        });
+    }
     
-    // 検索
-    document.getElementById('customer-search').addEventListener('input', function() {
-        filterCustomers();
-    });
+    // 検索（要素が存在する場合のみ）
+    const customerSearch = document.getElementById('customer-search');
+    if (customerSearch) {
+        customerSearch.addEventListener('input', function() {
+            filterCustomers();
+        });
+    }
     
-    // ソート
-    document.getElementById('sort-customers').addEventListener('change', function() {
-        sortCustomers(this.value);
-    });
+    // ソート（要素が存在する場合のみ）
+    const sortCustomersEl = document.getElementById('sort-customers');
+    if (sortCustomersEl) {
+        sortCustomersEl.addEventListener('change', function() {
+            sortCustomers(this.value);
+        });
+    }
     
-    // デザイン写真アップロード
-    document.getElementById('treatment-photos').addEventListener('change', function(e) {
-        previewPhotos(e.target.files);
-    });
+    // デザイン写真アップロード（要素が存在する場合のみ）
+    const treatmentPhotos = document.getElementById('treatment-photos');
+    if (treatmentPhotos) {
+        treatmentPhotos.addEventListener('change', function(e) {
+            previewPhotos(e.target.files);
+        });
+    }
     
     // ギャラリーフィルター（要素が存在する場合のみ）
     const designSearch = document.getElementById('design-search');
