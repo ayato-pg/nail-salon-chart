@@ -3,6 +3,7 @@ let customers = [];
 let treatments = [];
 let currentCustomerId = null;
 let designImages = [];
+let currentPage = 'customers';
 
 // ==========================================
 // 自動バックアップシステム
@@ -386,6 +387,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.location.search.includes('debug=1')) {
             toggleDebugMode();
         }
+        
+        // 初期ページ設定（FABボタンを正しく設定するため）
+        switchPage('customers');
+        addDebugLog('🏠 初期ページ設定完了');
     }, 1000);
     
     addDebugLog('✅ 初期化完了', 'success');
@@ -435,11 +440,13 @@ function setupEventListeners() {
 
 // ページ切り替え
 function switchPage(pageName) {
+    addDebugLog(`📄 ページ切り替え: ${pageName}`);
+    
     // ナビゲーションの更新
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.page === pageName) {
-            btn.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === pageName) {
+            item.classList.add('active');
         }
     });
     
@@ -449,6 +456,32 @@ function switchPage(pageName) {
     });
     document.getElementById(`${pageName}-page`).classList.add('active');
     
+    // 現在のページを記録
+    currentPage = pageName;
+    
+    // FABボタンの表示制御
+    const fab = document.getElementById('fab-btn');
+    if (fab) {
+        if (pageName === 'customers') {
+            fab.style.display = 'flex';
+            fab.onclick = () => {
+                addDebugLog('📝 新規顧客登録画面へ');
+                switchPage('new-customer');
+            };
+        } else if (pageName === 'treatments') {
+            fab.style.display = 'flex';
+            fab.onclick = () => {
+                addDebugLog('💅 新規施術記録画面へ');
+                openNewTreatment();
+            };
+        } else {
+            fab.style.display = 'none';
+        }
+        addDebugLog(`🔘 FABボタン設定: ${pageName} (表示: ${fab.style.display})`);
+    } else {
+        addDebugLog('❌ FABボタンが見つかりません', 'error');
+    }
+    
     // ページごとの初期化処理
     if (pageName === 'analytics') {
         updateAnalytics();
@@ -456,7 +489,11 @@ function switchPage(pageName) {
         renderGallery();
     } else if (pageName === 'treatments') {
         renderTreatmentList();
+    } else if (pageName === 'backup') {
+        renderBackupPage();
     }
+    
+    addDebugLog(`✅ ページ切り替え完了: ${pageName}`, 'success');
 }
 
 // データのローカルストレージ保存・読み込み
