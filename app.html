@@ -1047,7 +1047,7 @@
         // PWA関連の変数
         let deferredPrompt;
         let currentStream;
-        let currentPage = 'customers';
+        // currentPageはscript.jsで定義済み
         let touchStartY = 0;
         let pullToRefreshTriggered = false;
         
@@ -1126,46 +1126,8 @@
             });
         });
         
-        function switchPage(pageName) {
-            // ナビゲーション更新
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.page === pageName) {
-                    item.classList.add('active');
-                }
-            });
-            
-            // ページ切り替え
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById(`${pageName}-page`).classList.add('active');
-            
-            currentPage = pageName;
-            
-            // FABボタンの表示制御
-            const fab = document.getElementById('fab-btn');
-            if (pageName === 'customers') {
-                fab.style.display = 'flex';
-                fab.onclick = () => switchPage('new-customer');
-            } else if (pageName === 'treatments') {
-                fab.style.display = 'flex';
-                fab.onclick = openNewTreatment;
-            } else {
-                fab.style.display = 'none';
-            }
-            
-            // ページ固有の初期化
-            if (pageName === 'analytics') {
-                updateAnalytics();
-            } else if (pageName === 'gallery') {
-                renderGallery();
-            } else if (pageName === 'treatments') {
-                renderTreatmentList();
-            } else if (pageName === 'backup') {
-                renderBackupPage();
-            }
-        }
+        // switchPage関数はscript.jsで定義済み
+        // ページ固有の初期化もscript.js内で処理される
         
         // プルトゥリフレッシュ
         document.addEventListener('touchstart', (e) => {

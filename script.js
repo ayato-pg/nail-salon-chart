@@ -432,10 +432,14 @@ function setupEventListeners() {
         previewPhotos(e.target.files);
     });
     
-    // ギャラリーフィルター
-    document.getElementById('design-search').addEventListener('input', filterGallery);
-    document.getElementById('season-filter').addEventListener('change', filterGallery);
-    document.getElementById('color-filter').addEventListener('change', filterGallery);
+    // ギャラリーフィルター（要素が存在する場合のみ）
+    const designSearch = document.getElementById('design-search');
+    const seasonFilter = document.getElementById('season-filter');
+    const colorFilter = document.getElementById('color-filter');
+    
+    if (designSearch) designSearch.addEventListener('input', filterGallery);
+    if (seasonFilter) seasonFilter.addEventListener('change', filterGallery);
+    if (colorFilter) colorFilter.addEventListener('change', filterGallery);
 }
 
 // ページ切り替え
