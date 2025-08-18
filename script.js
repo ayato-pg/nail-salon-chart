@@ -625,7 +625,8 @@ function loadData() {
 
 // 顧客管理機能
 function addNewCustomer() {
-    addDebugLog('👤 顧客登録開始');
+    const isEditMode = window.editingCustomerId !== undefined;
+    addDebugLog(isEditMode ? '✏️ 顧客更新開始' : '👤 顧客登録開始');
     
     // 必須フィールドチェック
     const name = document.getElementById('customer-name').value.trim();
@@ -636,56 +637,84 @@ function addNewCustomer() {
         return;
     }
     
-    const customer = {
-        id: Date.now().toString(),
+    const customerData = {
         name: name,
-        kana: document.getElementById('customer-kana')?.value.trim() || '',
+        kana: document.getElementById('customer-furigana')?.value.trim() || '',
         phone: document.getElementById('customer-phone')?.value.trim() || '',
         email: document.getElementById('customer-email')?.value.trim() || '',
         birthday: document.getElementById('customer-birthday')?.value || '',
         address: document.getElementById('customer-address')?.value.trim() || '',
         allergies: document.getElementById('customer-allergies')?.value.trim() || '',
         notes: document.getElementById('customer-notes')?.value.trim() || '',
-        createdAt: new Date().toISOString(),
         visitCount: 0
     };
     
-    addDebugLog(`👤 顧客データ作成: ${customer.name}`);
-    
     try {
-        customers.push(customer);
-        addDebugLog(`📊 顧客追加: 全${customers.length}人`);
+        let customer;
+        if (isEditMode) {
+            // 編集モード: 既存の顧客を更新
+            customer = customers.find(c => c.id === window.editingCustomerId);
+            if (customer) {
+                Object.assign(customer, customerData);
+                addDebugLog(`✏️ 顧客データ更新: ${customer.name}`);
+            } else {
+                addDebugLog('❌ 編集対象の顧客が見つかりません', 'error');
+                return;
+            }
+        } else {
+            // 新規モード: 新しい顧客を作成
+            customer = {
+                id: Date.now().toString(),
+                ...customerData,
+                createdAt: new Date().toISOString(),
+                visitCount: 0
+            };
+            customers.push(customer);
+            addDebugLog(`👤 顧客データ作成: ${customer.name}`);
+            addDebugLog(`📊 顧客追加: 全${customers.length}人`);
+        }
         
         const success = saveDataWithErrorHandling();
         
         if (success) {
-            addDebugLog('✅ 顧客データ保存成功', 'success');
+            addDebugLog(isEditMode ? '✅ 顧客データ更新成功' : '✅ 顧客データ保存成功', 'success');
             
             // フォームクリア
             document.getElementById('new-customer-form').reset();
+            
+            // 編集モードをクリア
+            delete window.editingCustomerId;
+            
+            // タイトルを元に戻す
+            const pageTitle = document.querySelector('#new-customer-page h2');
+            if (pageTitle) {
+                pageTitle.textContent = '新規顧客登録';
+            }
             
             // 顧客一覧ページに遷移
             switchPage('customers');
             renderCustomerList();
             
             // 成功メッセージ
-            showNotification('顧客を登録しました');
+            showToast(isEditMode ? '✅ 顧客情報を更新しました' : '✅ 顧客を登録しました');
             
             // 手動バックアップ作成
             if (typeof BackupSystem !== 'undefined') {
-                BackupSystem.createBackup('顧客登録');
+                BackupSystem.createBackup(isEditMode ? '顧客編集' : '顧客登録');
             }
             
             // カウント更新
             updateCounts();
         } else {
-            // 追加に失敗した場合はロールバック
-            customers.pop();
+            // 失敗した場合のロールバック
+            if (!isEditMode) {
+                customers.pop();
+            }
             addDebugLog('❌ 顧客データ保存失敗、ロールバック', 'error');
         }
     } catch (error) {
-        addDebugLog(`❌ 顧客登録エラー: ${error.message}`, 'error');
-        alert('顧客登録中にエラーが発生しました: ' + error.message);
+        addDebugLog(`❌ 顧客${isEditMode ? '更新' : '登録'}エラー: ${error.message}`, 'error');
+        alert(`顧客${isEditMode ? '更新' : '登録'}中にエラーが発生しました: ` + error.message);
     }
 }
 
@@ -696,19 +725,26 @@ function renderCustomerList() {
     customers.forEach(customer => {
         const card = document.createElement('div');
         card.className = 'customer-card';
-        card.onclick = () => showCustomerDetail(customer.id);
         
         const lastVisit = getLastVisit(customer.id);
         const visitCount = getVisitCount(customer.id);
         
         card.innerHTML = `
-            <h3>${customer.name}${customer.kana ? ` (${customer.kana})` : ''}</h3>
-            <div class="customer-info">
-                <span>📱 ${customer.phone}</span>
-                ${customer.email ? `<span>✉️ ${customer.email}</span>` : ''}
-                <span>🎂 ${customer.birthday ? formatDate(customer.birthday) : '未登録'}</span>
-                <span>📅 最終来店: ${lastVisit ? formatDate(lastVisit) : 'なし'}</span>
-                <span>来店回数<span class="visit-count">${visitCount}回</span></span>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div onclick="showCustomerDetail(${customer.id})" style="flex: 1; cursor: pointer;">
+                    <h3>${customer.name}${customer.kana ? ` (${customer.kana})` : ''}</h3>
+                    <div class="customer-info">
+                        <span>📱 ${customer.phone}</span>
+                        ${customer.email ? `<span>✉️ ${customer.email}</span>` : ''}
+                        <span>🎂 ${customer.birthday ? formatDate(customer.birthday) : '未登録'}</span>
+                        <span>📅 最終来店: ${lastVisit ? formatDate(lastVisit) : 'なし'}</span>
+                        <span>来店回数<span class="visit-count">${visitCount}回</span></span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <button class="btn-icon" onclick="event.stopPropagation(); editCustomer(${customer.id})" title="編集">✏️</button>
+                    <button class="btn-icon" onclick="event.stopPropagation(); confirmDeleteCustomer(${customer.id})" title="削除">🗑️</button>
+                </div>
             </div>
         `;
         
@@ -768,41 +804,82 @@ function showCustomerDetail(customerId) {
     modal.classList.add('active');
 }
 
-function deleteCustomer(customerId) {
-    if (!confirm('この顧客を削除してもよろしいですか？\n関連する施術記録も削除されます。')) {
+function editCustomer(customerId) {
+    addDebugLog(`✏️ 顧客編集開始: ID ${customerId}`);
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) {
+        addDebugLog('❌ 顧客が見つかりません', 'error');
         return;
     }
     
-    customers = customers.filter(c => c.id !== customerId);
-    treatments = treatments.filter(t => t.customerId !== customerId);
-    
-    saveData();
-    closeModal('customer-modal');
-    renderCustomerList();
-    showNotification('顧客を削除しました');
-}
-
-function editCustomer(customerId) {
-    // 編集機能（簡易版）
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer) return;
-    
     // 新規顧客フォームに値をセット
-    document.getElementById('customer-name').value = customer.name;
-    document.getElementById('customer-kana').value = customer.kana || '';
-    document.getElementById('customer-phone').value = customer.phone;
+    document.getElementById('customer-name').value = customer.name || '';
+    document.getElementById('customer-furigana').value = customer.kana || '';
+    document.getElementById('customer-phone').value = customer.phone || '';
     document.getElementById('customer-email').value = customer.email || '';
     document.getElementById('customer-birthday').value = customer.birthday || '';
     document.getElementById('customer-address').value = customer.address || '';
     document.getElementById('customer-allergies').value = customer.allergies || '';
     document.getElementById('customer-notes').value = customer.notes || '';
     
-    // 顧客を削除して新規として再登録（簡易実装）
-    customers = customers.filter(c => c.id !== customerId);
-    saveData();
+    // 編集モードのフラグを設定
+    window.editingCustomerId = customerId;
     
-    closeModal('customer-modal');
+    // 新規顧客ページに切り替え
     switchPage('new-customer');
+    
+    // タイトルを「顧客編集」に変更
+    const pageTitle = document.querySelector('#new-customer-page h2');
+    if (pageTitle) {
+        pageTitle.textContent = '✏️ 顧客編集';
+    }
+    
+    addDebugLog(`✅ 編集フォーム表示: ${customer.name}`, 'success');
+}
+
+// 顧客削除確認
+function confirmDeleteCustomer(customerId) {
+    addDebugLog(`🗑️ 削除確認: ID ${customerId}`);
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) {
+        addDebugLog('❌ 顧客が見つかりません', 'error');
+        return;
+    }
+    
+    // 削除確認ダイアログ
+    if (confirm(`${customer.name} さんを削除してよろしいですか？\n\n※この操作は取り消せません。\n※施術記録も同時に削除されます。`)) {
+        deleteCustomer(customerId);
+    }
+}
+
+// 顧客削除処理
+function deleteCustomer(customerId) {
+    addDebugLog(`🗑️ 顧客削除実行: ID ${customerId}`);
+    
+    // 顧客データを削除
+    const deletedCustomer = customers.find(c => c.id === customerId);
+    customers = customers.filter(c => c.id !== customerId);
+    
+    // 関連する施術記録も削除
+    const beforeCount = treatments.length;
+    treatments = treatments.filter(t => t.customerId !== customerId);
+    const deletedTreatments = beforeCount - treatments.length;
+    
+    // データ保存
+    if (saveDataWithErrorHandling()) {
+        renderCustomerList();
+        showToast(`✅ ${deletedCustomer.name} さんを削除しました（施術記録${deletedTreatments}件も削除）`);
+        addDebugLog(`✅ 削除完了: ${deletedCustomer.name}（施術記録${deletedTreatments}件）`, 'success');
+        
+        // バックアップ作成
+        if (typeof BackupSystem !== 'undefined') {
+            BackupSystem.createBackup('顧客削除');
+        }
+    } else {
+        // ロールバック
+        location.reload();
+        addDebugLog('❌ 削除失敗、ページを再読み込みします', 'error');
+    }
 }
 
 // 施術記録機能

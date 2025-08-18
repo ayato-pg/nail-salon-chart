@@ -997,8 +997,11 @@
                     
                     <div class="form-group">
                         <label class="form-label">📷 デザイン写真</label>
-                        <button type="button" class="btn btn-outline" onclick="openCamera()">📷 カメラで撮影</button>
-                        <input type="file" id="treatment-photos" multiple accept="image/*" style="display: none;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <button type="button" class="btn btn-outline" onclick="openCamera()">📷 カメラで撮影</button>
+                            <button type="button" class="btn btn-outline" onclick="document.getElementById('treatment-photos').click()">📁 アルバムから選択</button>
+                        </div>
+                        <input type="file" id="treatment-photos" multiple accept="image/*" style="display: none;" onchange="previewPhotos(this.files)">
                         <div class="photo-preview" id="photo-preview"></div>
                     </div>
                     
